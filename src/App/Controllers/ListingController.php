@@ -64,6 +64,18 @@ class ListingController
       return;
     }
 
+    // Track job click if user is logged in
+    $user = Session::get('user');
+    if ($user) {
+      $this->db->query(
+        "INSERT INTO job_clicks (user_id, listing_id) VALUES (:user_id, :listing_id)",
+        [
+          'user_id' => $user['id'],
+          'listing_id' => $listing->id
+        ]
+      );
+    }
+
     loadView('listings/show', [
       'listing' => $listing
     ]);

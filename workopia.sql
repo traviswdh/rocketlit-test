@@ -50,3 +50,26 @@ INSERT INTO `listings` VALUES
   (4,1,'Data Analyst','We are hiring a Data Analyst to analyze and interpret data for insights','75000','data analysis, statistics','Data Insights LLC','101 Data St','Chicago','IL','444-555-5555','info@datainsights.com','Bachelors degree in Data Science or related field, strong analytical skills','Health benefits, remote work options, casual dress code','2023-11-18 14:11:55'),
   (5,2,'Graphic Designer','Join our creative team as a Graphic Designer and bring ideas to life','70000','graphic design, creative','CreativeWorks Inc','234 Design Blvd','Albany','NY','499-321-9876','info@creativeworks.com','Bachelors degree in Graphic Design or related field, proficiency in Adobe Creative Suite','Flexible work hours, creative work environment, opportunities for growth','2023-11-18 14:13:35'),
   (7,1,'Frontend Web Developer','This is a frontend position working with React','70000','frontend, development','Traversy Media','10 main st','Boston','MA','555-555-5555','info@test.com','Bachelors degree','401K and Health insurance','2023-11-21 14:07:24');
+
+-- Track every job click by a user
+CREATE TABLE IF NOT EXISTS `job_clicks` (
+  `id` INT NOT NULL AUTO_INCREMENT,
+  `user_id` INT NOT NULL,
+  `listing_id` INT NOT NULL,
+  `clicked_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
+  FOREIGN KEY (`listing_id`) REFERENCES `listings` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- Superadmin users table
+CREATE TABLE IF NOT EXISTS `superadmins` (
+  `id` INT NOT NULL AUTO_INCREMENT,
+  `user_id` INT NOT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE (`user_id`),
+  FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- Insert initial superadmin (e.g. user_id = 1)
+INSERT INTO `superadmins` (`user_id`) VALUES (1);
