@@ -21,10 +21,25 @@ class HomeController
    */
   public function index()
   {
-    $listings = $this->db->query('SELECT * FROM listings ORDER BY created_at DESC LIMIT 6')->fetchAll();
+    $userId = $_SESSION['user']['id'] ?? null;
+
+    $query = "
+        SELECT 
+            l.*,
+            COUNT(DISTINCT jc_all.user_id) AS total_clicks,
+            MAX(CASE WHEN jc_user.user_id = :user_id THEN 1 ELSE 0 END) AS user_clicked
+        FROM listings l
+        LEFT JOIN job_clicks jc_all ON jc_all.listing_id = l.id
+        LEFT JOIN job_clicks jc_user ON jc_user.listing_id = l.id AND jc_user.user_id = :user_id
+        GROUP BY l.id
+        ORDER BY l.created_at DESC
+        LIMIT 6
+    ";
+
+    $listings = $this->db->query($query, ['user_id' => $userId])->fetchAll();
 
     loadView('home', [
-      'listings' => $listings
+        'listings' => $listings
     ]);
   }
 }

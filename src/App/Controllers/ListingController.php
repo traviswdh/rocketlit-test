@@ -25,10 +25,24 @@ class ListingController
    */
   public function index()
   {
-    $listings = $this->db->query('SELECT * FROM listings ORDER BY created_at DESC')->fetchAll();
+    $userId = Session::get('user')['id'] ?? null;
+
+    $query = "
+        SELECT 
+            l.*,
+            COUNT(DISTINCT jc_all.user_id) AS total_clicks,
+            MAX(CASE WHEN jc_user.user_id = :user_id THEN 1 ELSE 0 END) AS user_clicked
+        FROM listings l
+        LEFT JOIN job_clicks jc_all ON jc_all.listing_id = l.id
+        LEFT JOIN job_clicks jc_user ON jc_user.listing_id = l.id AND jc_user.user_id = :user_id
+        GROUP BY l.id
+        ORDER BY l.created_at DESC
+    ";
+
+    $listings = $this->db->query($query, ['user_id' => $userId])->fetchAll();
 
     loadView('listings/index', [
-      'listings' => $listings
+        'listings' => $listings
     ]);
   }
 
@@ -50,35 +64,51 @@ class ListingController
    */
   public function show($params)
   {
-    $id = $params['id'] ?? '';
+      $id = $params['id'] ?? '';
+      $user = Session::get('user');
+      $userId = $user['id'] ?? 0;
 
-    $params = [
-      'id' => $id
-    ];
+      // Fetch listing with click info
+      $listing = $this->db->query("
+          SELECT 
+              l.*,
+              COUNT(DISTINCT jc_all.user_id) AS total_clicks,
+              MAX(CASE WHEN jc_user.user_id = :user_id THEN 1 ELSE 0 END) AS user_clicked
+          FROM listings l
+          LEFT JOIN job_clicks jc_all ON jc_all.listing_id = l.id
+          LEFT JOIN job_clicks jc_user ON jc_user.listing_id = l.id AND jc_user.user_id = :user_id
+          WHERE l.id = :id
+          GROUP BY l.id
+      ", [
+          'id' => $id,
+          'user_id' => $userId
+      ])->fetch();
 
-    $listing = $this->db->query('SELECT * FROM listings WHERE id = :id', $params)->fetch();
+      // Check if listing exists
+      if (!$listing) {
+          ErrorController::notFound('Listing not found');
+          return;
+      }
 
-    // Check if listing exists
-    if (!$listing) {
-      ErrorController::notFound('Listing not found');
-      return;
-    }
+      // Track job click only if user is logged in and hasn't clicked before
+      if ($user) {
+          $this->db->query(
+              "INSERT INTO job_clicks (user_id, listing_id) VALUES (:user_id, :listing_id)",
+              [
+                  'user_id' => $userId,
+                  'listing_id' => $listing->id
+              ]
+          );
 
-    // Track job click if user is logged in
-    $user = Session::get('user');
-    if ($user) {
-      $this->db->query(
-        "INSERT INTO job_clicks (user_id, listing_id) VALUES (:user_id, :listing_id)",
-        [
-          'user_id' => $user['id'],
-          'listing_id' => $listing->id
-        ]
-      );
-    }
+          if (!$listing->user_clicked) {
+            $listing->user_clicked = 1;
+            $listing->total_clicks += 1;
+          }
+      }
 
-    loadView('listings/show', [
-      'listing' => $listing
-    ]);
+      loadView('listings/show', [
+          'listing' => $listing
+      ]);
   }
 
   /**
